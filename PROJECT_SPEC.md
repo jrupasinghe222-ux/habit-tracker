@@ -4,7 +4,7 @@ Status: Google provider enabled; database migrations 0001 through 0003 applied; 
 
 ## Purpose
 
-Build a responsive, multi-user habit tracker while teaching the owner how to direct Codex, review changes, test behavior, and deploy safely. Explain each milestone and provide reproducible commands. Build in small working steps.
+Build a responsive, multi-user habit tracker with private daily task management, completion history, and progress tracking.
 
 ## Stack and budget
 
