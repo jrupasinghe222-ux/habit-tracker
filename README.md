@@ -48,7 +48,7 @@ The GitHub workflow runs tests and the frontend build after pushes and pull requ
 
 | File/folder | Purpose |
 | --- | --- |
-| frontend/src/main.tsx | Google login, habit form/list, logout |
+| frontend/src/App.tsx | Google login, dated task form/list, logout |
 | frontend/src/supabase.ts | Browser auth client, PKCE, persistent browser sessions |
 | backend/auth.py | Validates signed Supabase access tokens |
 | backend/database.py | Restricted PostgreSQL connection and transaction-scoped owner |
@@ -93,3 +93,5 @@ Existing recurring habits remain a starting list for dates on or after their cre
 Calendar reads initialize up to seven dated snapshots and require a database transaction. PostgreSQL advisory locks serialize modifications per owner and date; snapshot inserts use ON CONFLICT DO NOTHING. Client-generated IDs make retries of task creation idempotent. The UI caps each date at 100 tasks. Legacy habit endpoints remain for compatibility; the new UI does not use them. Previously deleted records cannot be recovered. Timezone still follows the device, rather than a saved profile.
 
 Validation: 57 backend tests cover date isolation, persistence, deletion tombstones, retry safety, validation, and cross-user blocking. `scripts/verify_database.py` tests live PostgreSQL RLS using rolled-back data. Run migration 0004 before deploying the new frontend; roll back application code without dropping dated records.
+
+Frontend reliability checks and their scope are documented in [docs/RELIABILITY_REVIEW.md](docs/RELIABILITY_REVIEW.md).

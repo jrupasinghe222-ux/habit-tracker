@@ -27,7 +27,19 @@ export function DeleteHabitDialog({ name, dateLabel, busy, error, onCancel, onCo
 
   return (
     <dialog ref={dialog} className="delete-dialog" aria-labelledby="delete-title"
-      aria-describedby="delete-description" aria-busy={busy}
+      aria-describedby="delete-description" aria-busy={busy} tabIndex={-1}
+      onKeyDown={event => {
+        if (event.key !== 'Tab') return
+        const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
+        const first = buttons[0]
+        const last = buttons[buttons.length - 1]
+        if (!first) { event.preventDefault(); event.currentTarget.focus(); return }
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+          event.preventDefault(); last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus()
+        }
+      }}
       onCancel={event => { event.preventDefault(); if (!busy) onCancel() }}>
       <div className="delete-dialog-heading">
       <div className="delete-dialog-icon" aria-hidden="true">

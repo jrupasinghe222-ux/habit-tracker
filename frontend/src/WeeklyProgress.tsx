@@ -15,7 +15,7 @@ export function WeeklyProgress({ days, selectedDate, today, disabled, onSelect }
       {days.map((day, index) => <button key={day.date} type="button" disabled={disabled || day.date < '2000-01-01'}
         className={`week-day${selectedDate === day.date ? ' selected' : ''}`} aria-pressed={selectedDate === day.date}
         aria-label={`${displayDate(day.date, { dateStyle: 'full' })}: ${counts[index]} of ${day.total} tasks completed`} onClick={() => onSelect(day.date)}>
-        <span className="day-count">{counts[index]}/{day.total}</span>
+        <span className="day-count"><span>{counts[index]}</span><span className="count-divider">/</span><span className="day-denominator">{day.total}</span></span>
         <span className="day-track" aria-hidden="true"><span style={{ height: `${day.total ? Math.min(counts[index] / day.total * 100, 100) : 0}%` }} /></span>
         <span className="day-label">{day.date === today ? 'Today' : displayDate(day.date, { weekday: 'short' })}</span>
       </button>)}
