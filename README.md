@@ -83,3 +83,13 @@ Manual browser checks: mark done, refresh, reopen the site, undo, compare a seco
 ## Weekly history
 
 The last seven days include today in the displayed device timezone. Select a bar to see completed habits on that date. Totals count check-ins, not completion percentages or streaks. History follows the current list of at most 100 habits; renamed habits display their current name, and deleted habits and their history disappear. Empty days show zero check-ins. No new migration is required.
+
+## Date-specific task operations
+
+Migration 0004 adds private `day_tasks` snapshots. The frontend now uses `/api/calendar` and `/api/days/{date}/tasks`. Select a date with the date picker, arrows, or chart. Add, rename, check/uncheck, and delete affect only that calendar date; future days cannot be edited.
+
+Existing recurring habits remain a starting list for dates on or after their creation date. When a date is opened, its snapshot imports any existing check-ins. A dated edit does not modify the underlying recurring default. Newly added tasks belong only to the selected day. Deletion stores a tombstone for that date so the default task cannot reappear after refreshing. Names and completed states on other dates remain intact. Rows belong directly to the authentication user and survive deletion of a legacy habit; deleting the user cascades to their daily task data.
+
+Calendar reads initialize up to seven dated snapshots and require a database transaction. PostgreSQL advisory locks serialize modifications per owner and date; snapshot inserts use ON CONFLICT DO NOTHING. Client-generated IDs make retries of task creation idempotent. The UI caps each date at 100 tasks. Legacy habit endpoints remain for compatibility; the new UI does not use them. Previously deleted records cannot be recovered. Timezone still follows the device, rather than a saved profile.
+
+Validation: 57 backend tests cover date isolation, persistence, deletion tombstones, retry safety, validation, and cross-user blocking. `scripts/verify_database.py` tests live PostgreSQL RLS using rolled-back data. Run migration 0004 before deploying the new frontend; roll back application code without dropping dated records.

@@ -236,3 +236,80 @@ def test_daily_totals_use_creation_dates_not_busiest_day(store, frozen_today):
     assert all(day["total"] == 0 for day in history[:-1])
     assert history[-1]["total"] == 5
     assert len(history[-1]["completed_ids"]) == 4
+
+
+@pytest.fixture
+def daily_seed(store, frozen_today):
+    from datetime import datetime, timezone, date
+    from backend.models import Completion
+    engine, owner, other = store
+    with Session(engine) as session:
+        habit = Habit(owner_id=owner, name="Read", created_at=datetime(2026, 9, 1, tzinfo=timezone.utc))
+        session.add(habit)
+        session.flush()
+        task_id = str(habit.id)
+        session.add(Completion(owner_id=owner, habit_id=habit.id, completed_on=date(2026, 9, 9)))
+        session.commit()
+    return task_id
+
+
+def test_day_edit_complete_delete_do_not_change_other_dates(store, daily_seed):
+    task_id = daily_seed
+    assert request("GET", "/api/calendar?selected=2026-09-09").json()["tasks"][0]["completed"] is True
+    path = f"/api/days/2026-09-09/tasks/{task_id}"
+    assert request("PATCH", path, {"name": "Read a novel", "completed": False}).status_code == 200
+    yesterday = request("GET", "/api/calendar?selected=2026-09-09").json()
+    assert yesterday["tasks"] == [{"id": task_id, "name": "Read a novel", "completed": False}]
+    today = request("GET", "/api/calendar?selected=2026-09-10").json()
+    assert today["tasks"] == [{"id": task_id, "name": "Read", "completed": False}]
+    assert request("DELETE", path).status_code == 204
+    for _ in range(2):
+        deleted = request("GET", "/api/calendar?selected=2026-09-09").json()
+        assert deleted["tasks"] == []
+        assert deleted["history"][-1]["total"] == 0
+    assert len(request("GET", "/api/calendar?selected=2026-09-10").json()["tasks"]) == 1
+
+
+def test_added_task_is_date_only_and_creation_retry_is_idempotent(store, daily_seed):
+    task_id = str(uuid4())
+    body = {"id": task_id, "name": "  Call dentist  "}
+    for _ in range(2):
+        assert request("POST", "/api/days/2026-09-08/tasks", body).status_code == 201
+    selected = request("GET", "/api/calendar?selected=2026-09-08").json()
+    assert len(selected["tasks"]) == 2
+    assert selected["tasks"][-1]["name"] == "Call dentist"
+    assert all(task["id"] != task_id for task in request("GET", "/api/calendar?selected=2026-09-09").json()["tasks"])
+    assert request("PATCH", f"/api/days/2026-09-09/tasks/{task_id}", {"completed": True}).status_code == 404
+
+
+def test_daily_tasks_are_private(store, daily_seed):
+    _, _, other = store
+    request("GET", "/api/calendar?selected=2026-09-09")
+    app.dependency_overrides[current_user] = lambda: other
+    assert request("GET", "/api/calendar?selected=2026-09-09").json()["tasks"] == []
+    path = f"/api/days/2026-09-09/tasks/{daily_seed}"
+    assert request("PATCH", path, {"name": "Stolen"}).status_code == 404
+    assert request("PATCH", path, {"completed": True}).status_code == 404
+    assert request("DELETE", path).status_code == 404
+
+
+@pytest.mark.parametrize("body", [{"name": " "}, {"name": None}, {"completed": None}, {"completed": "true"}, {}, {"owner_id": str(uuid4())}, {"task_date": "2026-09-08"}])
+def test_daily_task_validation(store, daily_seed, body):
+    assert request("PATCH", f"/api/days/2026-09-09/tasks/{daily_seed}", body).status_code == 422
+
+
+def test_daily_future_and_invalid_timezone_rejected(store, daily_seed):
+    assert request("GET", "/api/calendar?selected=2026-09-11").status_code == 422
+    assert request("POST", "/api/days/2026-09-11/tasks", {"id": str(uuid4()), "name": "Future"}).status_code == 422
+    assert request("GET", "/api/calendar?selected=1999-12-31").status_code == 422
+
+
+def test_daily_totals_preserve_completed_and_pending_snapshots(store, daily_seed):
+    request("GET", "/api/calendar?selected=2026-09-09")
+    request("POST", "/api/days/2026-09-09/tasks", {"id": str(uuid4()), "name": "Extra"})
+    result = request("GET", "/api/calendar?selected=2026-09-10").json()
+    yesterday, today = result["history"][-2:]
+    assert yesterday["total"] == 2
+    assert len(yesterday["completed_ids"]) == 1
+    assert today["total"] == 1
+    assert today["completed_ids"] == []

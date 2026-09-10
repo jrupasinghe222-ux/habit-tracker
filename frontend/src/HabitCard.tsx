@@ -4,6 +4,7 @@ import { HabitIcon } from './HabitIcon'
 
 type Habit = { id: string; name: string }
 type Props = {
+  dateLabel?: string
   habit: Habit
   completed: boolean
   checkingIn: boolean
@@ -15,7 +16,7 @@ type Props = {
   onDelete: () => void
 }
 
-export function HabitCard({ habit, completed, checkingIn, checkInDisabled, onCheckIn, deleting, deleteBusy, onSave, onDelete }: Props) {
+export function HabitCard({ habit, dateLabel, completed, checkingIn, checkInDisabled, onCheckIn, deleting, deleteBusy, onSave, onDelete }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(habit.name)
   const [saving, setSaving] = useState(false)
@@ -54,7 +55,7 @@ export function HabitCard({ habit, completed, checkingIn, checkInDisabled, onChe
       {editing ? (
         <form className="habit-editor" onSubmit={event => void save(event)}
           onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancel() } }}>
-          <label htmlFor={`edit-${habit.id}`}>Edit habit</label>
+          <label htmlFor={`edit-${habit.id}`}>Edit task</label>
           <input id={`edit-${habit.id}`} value={draft} autoFocus maxLength={80} required
             disabled={saving} onChange={event => setDraft(event.target.value)} />
           <div className="habit-actions">
@@ -72,7 +73,7 @@ export function HabitCard({ habit, completed, checkingIn, checkInDisabled, onChe
           </div>
           <div className="habit-actions">
             <button type="button" className={`check-in${completed ? ' checked-in' : ''}`}
-              aria-pressed={completed} aria-label={`${completed ? 'Undo today check-in for' : 'Mark done today:'} ${habit.name}`}
+              aria-pressed={completed} aria-label={`${completed ? 'Undo completion for' : 'Mark done:'} ${habit.name}${dateLabel ? ` on ${dateLabel}` : ''}`}
               disabled={checkInDisabled || deleting} onClick={onCheckIn}>
               {checkingIn ? 'Saving…' : completed ? '✓ Done' : 'Done'}
             </button>

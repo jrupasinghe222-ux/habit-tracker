@@ -89,3 +89,8 @@ input:focus-visible { outline: 3px solid #284fc7; outline-offset: 2px; }
 .weekly-progress .history-detail p, .weekly-progress .history-note { min-height: 0; margin: 0; font-size: .875rem; color: #52617c; }
 .weekly-progress .history-note { margin-top: 1rem; font-size: .8rem; }
 @media (max-width: 400px) { .week-chart { gap: .2rem; } .day-label { font-size: .65rem; } }
+
+.date-navigation { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; }
+.date-navigation input { flex: 1; width: auto; min-width: 9rem; }
+.date-navigation button { padding: .65rem .8rem; }
+section .date-scope { min-height: 0; font-size: .875rem; color: #52617c; margin: .75rem 0; }

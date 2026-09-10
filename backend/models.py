@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKeyConstraint, String, UniqueConstraint, Uuid, func
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKeyConstraint, String, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -31,4 +31,16 @@ class Completion(Base):
     habit_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
     completed_on: Mapped[date] = mapped_column(Date, primary_key=True)
     owner_id: Mapped[UUID] = mapped_column(Uuid, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DayTask(Base):
+    __tablename__ = "day_tasks"
+    __table_args__ = (CheckConstraint("length(trim(name)) BETWEEN 1 AND 80", name="day_task_name_length"), {"schema": "habit_app"})
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    task_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    owner_id: Mapped[UUID] = mapped_column(Uuid, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    removed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -21,9 +21,10 @@ def main():
         user_id = c.scalar(text("SELECT id FROM auth.users ORDER BY created_at LIMIT 1"))
         if user_id is None:
             raise RuntimeError("Sign in once before running this check.")
-        assert c.scalar(text("SELECT version_num FROM public.alembic_version")) == "0003"
+        assert c.scalar(text("SELECT version_num FROM public.alembic_version")) == "0004"
         assert c.scalar(text("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='habit_app.habits'::regclass"))
         assert c.scalar(text("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='habit_app.completions'::regclass"))
+        assert c.scalar(text("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='habit_app.day_tasks'::regclass"))
         for role in ("anon", "authenticated"):
             assert not c.scalar(text("SELECT has_schema_privilege(:role, 'habit_app', 'USAGE')"), {"role": role})
     habit_id, other_user = uuid4(), uuid4()
@@ -38,6 +39,8 @@ def main():
             assert c.scalar(text("SELECT count(*) FROM habit_app.habits WHERE id=:id"), {"id": habit_id}) == 1
             assert c.execute(text("UPDATE habit_app.habits SET name='Updated isolation check' WHERE id=:id"), {"id": habit_id}).rowcount == 1
             assert c.scalar(text("SELECT name FROM habit_app.habits WHERE id=:id"), {"id": habit_id}) == "Updated isolation check"
+            c.execute(text("INSERT INTO habit_app.day_tasks(id, task_date, owner_id, name) VALUES (:id, CURRENT_DATE, :owner, 'Temporary daily task')"), {"id": habit_id, "owner": user_id})
+            assert c.execute(text("UPDATE habit_app.day_tasks SET name='Edited daily task', completed=true, removed=true WHERE id=:id"), {"id": habit_id}).rowcount == 1
             completion_params = {"id": habit_id, "owner": user_id}
             for _ in range(2):
                 c.execute(text("INSERT INTO habit_app.completions(habit_id,owner_id,completed_on) VALUES (:id,:owner,CURRENT_DATE) ON CONFLICT DO NOTHING"), completion_params)
@@ -53,6 +56,15 @@ def main():
                     assert getattr(error.orig, "sqlstate", None) == expected
                 else:
                     raise AssertionError("Completion ownership protection failed")
+            assert c.scalar(text("SELECT count(*) FROM habit_app.day_tasks WHERE id=:id"), {"id": habit_id}) == 0
+            assert c.execute(text("UPDATE habit_app.day_tasks SET name='Forbidden', completed=false, removed=false WHERE id=:id"), {"id": habit_id}).rowcount == 0
+            try:
+                with c.begin_nested():
+                    c.execute(text("INSERT INTO habit_app.day_tasks(id, task_date, owner_id, name) VALUES (:id, CURRENT_DATE, :owner, 'Forged')"), {"id": uuid4(), "owner": user_id})
+            except DBAPIError as error:
+                assert getattr(error.orig, "sqlstate", None) == "42501"
+            else:
+                raise AssertionError("Daily task RLS allowed a forged owner")
             assert c.execute(text("UPDATE habit_app.habits SET name='Forbidden update' WHERE id=:id"), {"id": habit_id}).rowcount == 0
             assert c.scalar(text("SELECT count(*) FROM habit_app.habits WHERE id=:id"), {"id": habit_id}) == 0
             assert c.execute(text("DELETE FROM habit_app.habits WHERE id=:id"), {"id": habit_id}).rowcount == 0
@@ -75,6 +87,7 @@ def main():
     runtime.dispose()
     print("PASS: migration, restricted role, private schema, own-row access, cross-user read/update/delete blocking, forged-owner blocking.")
     print("PASS: completion RLS, duplicate protection, forged ownership, cross-user read/delete blocking, cascade deletion.")
+    print("PASS: daily task RLS, own-row edits, cross-user read/update blocking, forged owner rejection.")
     print("All temporary data rolled back.")
 
 if __name__ == "__main__":

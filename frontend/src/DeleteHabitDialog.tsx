@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 type Props = {
+  dateLabel?: string
   name: string
   busy: boolean
   error: string
@@ -8,7 +9,7 @@ type Props = {
   onConfirm: () => void
 }
 
-export function DeleteHabitDialog({ name, busy, error, onCancel, onConfirm }: Props) {
+export function DeleteHabitDialog({ name, dateLabel, busy, error, onCancel, onConfirm }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const cancel = useRef<HTMLButtonElement>(null)
 
@@ -35,14 +36,14 @@ export function DeleteHabitDialog({ name, busy, error, onCancel, onConfirm }: Pr
           <path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6m4-6v6" />
         </svg>
       </div>
-      <h2 id="delete-title">Delete this habit?</h2>
+      <h2 id="delete-title">Delete this task?</h2>
       </div>
-      <p id="delete-description"><strong>{name}</strong> will be deleted. This can't be undone.</p>
+      <p id="delete-description"><strong>{name}</strong> will be deleted{dateLabel ? ` from ${dateLabel} only` : ''}. This can't be undone.</p>
       {error && <p className="dialog-error" role="alert">{error}</p>}
       <div className="dialog-actions">
         <button ref={cancel} type="button" className="secondary" disabled={busy} onClick={onCancel}>Cancel</button>
         <button type="button" className="danger-button" disabled={busy} onClick={onConfirm}>
-          {busy ? 'Deleting…' : 'Delete habit'}
+          {busy ? 'Deleting…' : 'Delete task'}
         </button>
       </div>
     </dialog>
