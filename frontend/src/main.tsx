@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { HabitCard } from './HabitCard'
 import { DeleteHabitDialog } from './DeleteHabitDialog'
+import { useDailyProgress } from './useDailyProgress'
 import './styles.css'
 
 type Habit = { id: string; name: string }
@@ -22,6 +23,8 @@ function App() {
   const [deleteError, setDeleteError] = useState('')
   const [refresh, setRefresh] = useState(0)
   const generation = useRef(0)
+  const daily = useDailyProgress(session?.access_token, refresh)
+  const completedCount = habits.filter(habit => daily.today?.completed_ids.includes(habit.id)).length
 
   useEffect(() => {
     if (!supabase) return
@@ -172,6 +175,16 @@ function App() {
       ) : (
         <section aria-labelledby="habits-title">
           <h2 id="habits-title">Your habits</h2>
+          <div className="daily-progress" aria-busy={!daily.today && !daily.error}>
+            {daily.today ? <>
+              <div className="progress-heading"><strong>{completedCount} of {habits.length} done today</strong>
+                <span>{daily.today.date} · {daily.today.timezone.replaceAll('_', ' ')}</span></div>
+              <progress value={completedCount} max={Math.max(habits.length, 1)} aria-label="Today's habit completion" />
+            </> : !daily.error && <span role="status">Loading today’s progress…</span>}
+            {daily.error && <div role="alert" className="progress-error">{daily.error}
+              <button type="button" className="secondary" onClick={daily.retry}>Reload progress</button>
+            </div>}
+          </div>
           <form onSubmit={event => void createHabit(event)}>
             <label htmlFor="habit-name">Add a daily habit</label>
             <div className="input-row">
@@ -183,6 +196,9 @@ function App() {
           {loading ? <p role="status">Loading your habits…</p> : (
             habits.length ? <ul className="habits">{habits.map(habit => (
               <HabitCard key={habit.id} habit={habit} deleting={pendingDelete === habit.id}
+                completed={daily.today?.completed_ids.includes(habit.id) ?? false}
+                checkInDisabled={!daily.today || daily.pending !== null || pendingDelete !== null}
+                checkingIn={daily.pending === habit.id} onCheckIn={() => void daily.toggle(habit.id)}
                 deleteBusy={pendingDelete !== null} onSave={updateHabit}
                 onDelete={() => { setDeleteError(''); setDeleteTarget(habit) }} />
             ))}</ul> : !message && <p>No habits yet. Add your first one above.</p>
@@ -194,7 +210,7 @@ function App() {
         error={deleteError} onCancel={() => { if (!pendingDelete) setDeleteTarget(null) }}
         onConfirm={() => void deleteHabit(deleteTarget)} />}
       {message && <p className="notice" role="alert">{message}</p>}
-      <p className="note">Early version · Daily check-ins and progress tracking are coming next.</p>
+      <p className="note">Small steps count. Check in each day and build your history.</p>
     </main>
   )
 }

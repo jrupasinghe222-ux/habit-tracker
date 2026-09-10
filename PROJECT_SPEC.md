@@ -1,6 +1,6 @@
 # Habit Tracker — project specification
 
-Status: Google provider enabled; database migrations 0001 and 0002 applied; restricted app connection configured; live PostgreSQL isolation checks and 31 local tests pass. Browser save/refresh verification and Vercel deployment remain pending.
+Status: Google provider enabled; database migrations 0001 through 0003 applied; restricted app connection configured; live PostgreSQL isolation checks and 42 local tests pass. Browser save/refresh verification and Vercel deployment remain pending.
 
 ## Purpose
 

@@ -4,10 +4,10 @@ A guided React + FastAPI + Supabase project.
 
 ## Current milestone
 
-Supabase Google sign-in is enabled. Migrations 0001 and 0002 are applied and the restricted runtime database connection is configured in the ignored root .env. Real PostgreSQL access-isolation checks pass. Vercel deployment and the full browser save/refresh workflow remain to be verified.
+Supabase Google sign-in is enabled. Migrations 0001 through 0003 are applied and the restricted runtime database connection is configured in the ignored root .env. Real PostgreSQL access-isolation checks pass. Vercel deployment and the full browser save/refresh workflow remain to be verified.
 
 Verified locally:
-- 31 tests pass: health, signed-token validation, input validation, and API user isolation.
+- 42 tests pass: health, signed-token validation, input validation, and API user isolation.
 - Frontend TypeScript check and production build pass.
 - Python dependency compatibility passes.
 - Alembic generates migration SQL successfully offline.
@@ -62,8 +62,20 @@ The GitHub workflow runs tests and the frontend build after pushes and pull requ
 
 ## Current limitations
 
-First habit-storage slice only: create/list/edit/delete, at most 100 listed habits. Scheduling, daily completions, streaks, pagination, abuse controls, export, account deletion, backups, and release-level browser/production checks remain to be built. API isolation tests use SQLite and do not prove PostgreSQL RLS behavior. Logout clears the local session; issued bearer tokens can remain valid until expiry.
+First habit-storage slice only: create/list/edit/delete, at most 100 listed habits. Scheduling, streaks, pagination, abuse controls, export, account deletion, backups, and release-level browser/production checks remain to be built. API isolation tests use SQLite and do not prove PostgreSQL RLS behavior. Logout clears the local session; issued bearer tokens can remain valid until expiry.
 
 Free hosting is subject to provider limits. Vercel Hobby must qualify as personal, non-commercial use. No public launch or unlimited-capacity/security guarantee is claimed.
 
 See [PROJECT_SPEC.md](PROJECT_SPEC.md) for the full release requirements.
+
+## Daily check-ins
+
+Migration 0003 adds private completion history. Run `python -m alembic upgrade head` from a trusted terminal before deploying this version. The migration is additive; existing habits remain intact. Rolling back the application code does not require dropping completion history.
+
+Each habit has a Done today toggle. A second click undoes today's completion. The progress count covers the displayed habits (currently at most 100). Dates use the device's IANA timezone, displayed beside the count; FastAPI calculates the current date. The UI refreshes progress every 30 seconds while visible and on returning to the tab. A request for an old or future date is rejected and prompts a reload. Only today's entries can be changed in this milestone; history remains stored for future progress views.
+
+Different device timezones may show different current dates. There is no saved account timezone setting yet. Existing completion dates do not shift when a device timezone changes.
+
+A database primary key prevents duplicate completions, including concurrent/retried requests. A composite foreign key prevents attributing a completion to someone else's habit. Completion rows have forced row-level security and are deleted with their habit. The rollback-only PostgreSQL check covers these protections.
+
+Manual browser checks: mark done, refresh, reopen the site, undo, compare a second account, and verify the layout on mobile. Use a disposable habit when testing deletion. Streaks and history charts are not yet implemented.

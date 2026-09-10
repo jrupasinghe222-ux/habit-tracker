@@ -1,10 +1,10 @@
 """API ownership tests; PostgreSQL RLS must also be verified against Supabase."""
 import asyncio
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -19,6 +19,9 @@ def store():
         "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False},
         execution_options={"schema_translate_map": {"habit_app": None}},
     )
+    @event.listens_for(engine, "connect")
+    def enforce_foreign_keys(connection, _):
+        connection.execute("PRAGMA foreign_keys=ON")
     Base.metadata.create_all(engine)
     owner, other = uuid4(), uuid4()
 
@@ -102,3 +105,82 @@ def test_update_rejects_invalid_names_and_owner_changes(store, body):
 
 def test_update_missing_habit_returns_404(store):
     assert request("PATCH", f"/api/habits/{uuid4()}", {"name": "Read"}).status_code == 404
+
+
+@pytest.fixture
+def frozen_today(monkeypatch):
+    from datetime import date
+    monkeypatch.setattr("backend.main.current_date", lambda zone: date(2026, 9, 10))
+
+
+def test_check_in_retry_undo_and_history(store, frozen_today):
+    from datetime import date
+    from backend.models import Completion
+    engine, owner, _ = store
+    habit = request("POST", "/api/habits", {"name": "Walk"}).json()
+    path = f"/api/habits/{habit['id']}/check-in"
+    body = {"date": "2026-09-10", "timezone": "Asia/Colombo", "completed": True}
+    for _ in range(2):
+        assert request("PUT", path, body).status_code == 200
+    assert request("GET", "/api/today").json()["completed_ids"] == [habit["id"]]
+    with Session(engine) as session:
+        assert len(session.query(Completion).all()) == 1
+        session.add(Completion(habit_id=UUID(habit['id']), owner_id=owner, completed_on=date(2026, 9, 9)))
+        session.commit()
+    for _ in range(2):
+        assert request("PUT", path, {**body, "completed": False}).status_code == 200
+    assert request("GET", "/api/today").json()["completed_ids"] == []
+    with Session(engine) as session:
+        assert [row.completed_on for row in session.query(Completion).all()] == [date(2026, 9, 9)]
+    assert request("DELETE", f"/api/habits/{habit['id']}").status_code == 204
+    with Session(engine) as session:
+        assert session.query(Completion).count() == 0
+
+
+def test_other_user_cannot_read_check_in_or_undo(store, frozen_today):
+    _, _, other = store
+    habit = request("POST", "/api/habits", {"name": "Walk"}).json()
+    path = f"/api/habits/{habit['id']}/check-in"
+    body = {"date": "2026-09-10", "timezone": "Asia/Colombo", "completed": True}
+    assert request("PUT", path, body).status_code == 200
+    app.dependency_overrides[current_user] = lambda: other
+    assert request("GET", "/api/today").json()["completed_ids"] == []
+    for completed in (True, False):
+        assert request("PUT", path, {**body, "completed": completed}).status_code == 404
+
+
+@pytest.mark.parametrize("day", ["2026-09-09", "2026-09-11"])
+def test_stale_or_future_check_ins_rejected(store, frozen_today, day):
+    habit = request("POST", "/api/habits", {"name": "Walk"}).json()
+    assert request("PUT", f"/api/habits/{habit['id']}/check-in", {
+        "date": day, "timezone": "UTC", "completed": True,
+    }).status_code == 409
+
+
+@pytest.mark.parametrize("change", [{"owner_id": str(uuid4())}, {"completed": "true"}, {"date": "bad-date"}])
+def test_check_in_input_validation(store, frozen_today, change):
+    assert request("PUT", f"/api/habits/{uuid4()}/check-in", {
+        "date": "2026-09-10", "timezone": "UTC", "completed": True, **change,
+    }).status_code == 422
+
+
+@pytest.mark.parametrize("zone", ["MadeUp/Timezone", "../UTC", ""])
+def test_invalid_timezone_rejected(store, zone):
+    assert request("GET", f"/api/today?timezone={zone}").status_code == 422
+
+
+def test_timezone_dates_and_dst(monkeypatch):
+    from datetime import datetime, timezone, date
+    from backend.main import current_date
+    class Clock:
+        instant = datetime(2026, 9, 10, 20, 0, tzinfo=timezone.utc)
+        @classmethod
+        def now(cls, zone):
+            return cls.instant.astimezone(zone)
+    monkeypatch.setattr("backend.main.datetime", Clock)
+    assert current_date("Asia/Colombo") == date(2026, 9, 11)
+    assert current_date("America/Los_Angeles") == date(2026, 9, 10)
+    # Spring-forward jumps an hour, without changing the calendar day.
+    for hour in (6, 7):
+        Clock.instant = datetime(2026, 3, 8, hour, 30, tzinfo=timezone.utc)
+        assert current_date("America/New_York") == date(2026, 3, 8)

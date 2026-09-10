@@ -1,16 +1,18 @@
 """Habit Tracker API. Authentication and database are configured separately."""
+from datetime import date, datetime, timezone as utc_timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.auth import current_user
 from backend.database import user_session
-from backend.models import Habit
+from backend.models import Completion, Habit
 
 app = FastAPI(title="Habit Tracker API", version="0.2.0")
 User = Annotated[UUID, Depends(current_user)]
@@ -97,3 +99,53 @@ def update_habit(habit_id: UUID, body: HabitInput, user_id: User, session: Datab
     habit.name = body.name
     session.flush()
     return habit
+
+
+def current_date(timezone: str) -> date:
+    if len(timezone) > 100:
+        raise HTTPException(422, "Choose a valid timezone.")
+    try:
+        zone = ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(422, "Choose a valid timezone.") from None
+    return datetime.now(utc_timezone.utc).astimezone(zone).date()
+
+
+@app.get("/api/today")
+def today(user_id: User, session: Database, timezone: str = "UTC"):
+    day = current_date(timezone)
+    completed = session.scalars(select(Completion.habit_id).where(
+        Completion.owner_id == user_id, Completion.completed_on == day,
+    )).all()
+    return {"date": day, "timezone": timezone, "completed_ids": completed}
+
+
+class CheckInInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    date: date
+    timezone: str = Field(min_length=1, max_length=100)
+    completed: bool = Field(strict=True)
+
+
+@app.put("/api/habits/{habit_id}/check-in")
+def check_in(habit_id: UUID, body: CheckInInput, user_id: User, session: Database):
+    if body.date != current_date(body.timezone):
+        raise HTTPException(409, "The day has changed. Reload today's progress and try again.")
+    habit = session.scalar(select(Habit).where(Habit.id == habit_id, Habit.owner_id == user_id))
+    if habit is None:
+        raise HTTPException(404, "Habit not found.")
+    if body.completed:
+        # A single atomic insert handles concurrent clicks/retries without duplicates.
+        if session.get_bind().dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert
+        else:
+            from sqlalchemy.dialects.sqlite import insert
+        session.execute(insert(Completion).values(
+            habit_id=habit_id, owner_id=user_id, completed_on=body.date,
+        ).on_conflict_do_nothing(index_elements=["habit_id", "completed_on"]))
+    else:
+        session.execute(delete(Completion).where(
+            Completion.habit_id == habit_id, Completion.owner_id == user_id,
+            Completion.completed_on == body.date,
+        ))
+    return {"habit_id": habit_id, "date": body.date, "completed": body.completed}

@@ -21,8 +21,9 @@ def main():
         user_id = c.scalar(text("SELECT id FROM auth.users ORDER BY created_at LIMIT 1"))
         if user_id is None:
             raise RuntimeError("Sign in once before running this check.")
-        assert c.scalar(text("SELECT version_num FROM public.alembic_version")) == "0002"
+        assert c.scalar(text("SELECT version_num FROM public.alembic_version")) == "0003"
         assert c.scalar(text("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='habit_app.habits'::regclass"))
+        assert c.scalar(text("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='habit_app.completions'::regclass"))
         for role in ("anon", "authenticated"):
             assert not c.scalar(text("SELECT has_schema_privilege(:role, 'habit_app', 'USAGE')"), {"role": role})
     habit_id, other_user = uuid4(), uuid4()
@@ -37,7 +38,21 @@ def main():
             assert c.scalar(text("SELECT count(*) FROM habit_app.habits WHERE id=:id"), {"id": habit_id}) == 1
             assert c.execute(text("UPDATE habit_app.habits SET name='Updated isolation check' WHERE id=:id"), {"id": habit_id}).rowcount == 1
             assert c.scalar(text("SELECT name FROM habit_app.habits WHERE id=:id"), {"id": habit_id}) == "Updated isolation check"
+            completion_params = {"id": habit_id, "owner": user_id}
+            for _ in range(2):
+                c.execute(text("INSERT INTO habit_app.completions(habit_id,owner_id,completed_on) VALUES (:id,:owner,CURRENT_DATE) ON CONFLICT DO NOTHING"), completion_params)
+            assert c.scalar(text("SELECT count(*) FROM habit_app.completions WHERE habit_id=:id"), {"id": habit_id}) == 1
             c.execute(text("SELECT set_config('app.user_id', :owner, true)"), {"owner": str(other_user)})
+            assert c.scalar(text("SELECT count(*) FROM habit_app.completions WHERE habit_id=:id"), {"id": habit_id}) == 0
+            assert c.execute(text("DELETE FROM habit_app.completions WHERE habit_id=:id"), {"id": habit_id}).rowcount == 0
+            for forged_owner, expected in ((user_id, "42501"), (other_user, "23503")):
+                try:
+                    with c.begin_nested():
+                        c.execute(text("INSERT INTO habit_app.completions(habit_id,owner_id,completed_on) VALUES (:id,:owner,CURRENT_DATE - 1)"), {"id": habit_id, "owner": forged_owner})
+                except DBAPIError as error:
+                    assert getattr(error.orig, "sqlstate", None) == expected
+                else:
+                    raise AssertionError("Completion ownership protection failed")
             assert c.execute(text("UPDATE habit_app.habits SET name='Forbidden update' WHERE id=:id"), {"id": habit_id}).rowcount == 0
             assert c.scalar(text("SELECT count(*) FROM habit_app.habits WHERE id=:id"), {"id": habit_id}) == 0
             assert c.execute(text("DELETE FROM habit_app.habits WHERE id=:id"), {"id": habit_id}).rowcount == 0
@@ -51,6 +66,7 @@ def main():
                 raise AssertionError("RLS allowed a forged owner")
             c.execute(text("SELECT set_config('app.user_id', :owner, true)"), {"owner": str(user_id)})
             assert c.execute(text("DELETE FROM habit_app.habits WHERE id=:id"), {"id": habit_id}).rowcount == 1
+            assert c.scalar(text("SELECT count(*) FROM habit_app.completions WHERE habit_id=:id"), {"id": habit_id}) == 0
         finally:
             transaction.rollback()
     with admin.connect() as c:
@@ -58,6 +74,7 @@ def main():
     admin.dispose()
     runtime.dispose()
     print("PASS: migration, restricted role, private schema, own-row access, cross-user read/update/delete blocking, forged-owner blocking.")
+    print("PASS: completion RLS, duplicate protection, forged ownership, cross-user read/delete blocking, cascade deletion.")
     print("All temporary data rolled back.")
 
 if __name__ == "__main__":
