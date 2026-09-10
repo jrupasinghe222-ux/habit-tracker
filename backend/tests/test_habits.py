@@ -266,7 +266,7 @@ def test_day_edit_complete_delete_do_not_change_other_dates(store, daily_seed):
     for _ in range(2):
         deleted = request("GET", "/api/calendar?selected=2026-09-09").json()
         assert deleted["tasks"] == []
-        assert deleted["history"][-1]["total"] == 0
+        assert next(day for day in deleted["history"] if day["date"] == "2026-09-09")["total"] == 0
     assert len(request("GET", "/api/calendar?selected=2026-09-10").json()["tasks"]) == 1
 
 
@@ -313,3 +313,15 @@ def test_daily_totals_preserve_completed_and_pending_snapshots(store, daily_seed
     assert len(yesterday["completed_ids"]) == 1
     assert today["total"] == 1
     assert today["completed_ids"] == []
+
+
+@pytest.mark.parametrize("selected", ["2026-09-09", "2026-09-02"])
+def test_calendar_week_stays_anchored_to_today(store, daily_seed, selected):
+    task_id = str(uuid4())
+    assert request("POST", f"/api/days/{selected}/tasks", {"id": task_id, "name": "Dated task"}).status_code == 201
+    result = request("GET", f"/api/calendar?selected={selected}").json()
+    assert result["date"] == selected
+    assert any(task["id"] == task_id for task in result["tasks"])
+    assert [day["date"] for day in result["history"]] == [f"2026-09-{day:02}" for day in range(4, 11)]
+    assert result["today"] == "2026-09-10"
+    assert len(result["history"]) == 7

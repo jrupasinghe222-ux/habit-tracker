@@ -224,11 +224,12 @@ def calendar(user_id: User, session: Database, timezone: str = "UTC", selected: 
     validate_day(selected, timezone)
     history = []
     tasks = []
-    # Lock in chronological order to avoid deadlocks between overlapping weeks.
-    for offset in range(6, -1, -1):
-        day = selected - timedelta(days=offset)
+    week = {now - timedelta(days=offset) for offset in range(7)}
+    # Include an older selected date, keeping all locks in chronological order.
+    for day in sorted(week | {selected}):
         rows = day_tasks(session, user_id, day, timezone)
-        history.append({"date": day, "total": len(rows), "completed_ids": [row.id for row in rows if row.completed]})
+        if day in week:
+            history.append({"date": day, "total": len(rows), "completed_ids": [row.id for row in rows if row.completed]})
         if day == selected:
             tasks = [day_output(row) for row in rows]
     return {"date": selected, "today": now, "timezone": timezone, "tasks": tasks, "history": history}

@@ -8,7 +8,7 @@ export function WeeklyProgress({ days, selectedDate, today, disabled, onSelect }
   const total = counts.reduce((sum, count) => sum + count, 0)
   const activeDays = counts.filter(count => count > 0).length
   return <section className="weekly-progress" aria-labelledby="weekly-title">
-    <div className="weekly-heading"><div><h2 id="weekly-title">{selectedDate === today ? 'Your last 7 days' : '7 days ending here'}</h2>
+    <div className="weekly-heading"><div><h2 id="weekly-title">Your last 7 days</h2>
       <span className="weekly-summary">{total} {total === 1 ? 'check-in' : 'check-ins'} · {activeDays} active {activeDays === 1 ? 'day' : 'days'}</span></div>
       <span className="weekly-range">{displayDate(days[0].date, { month: 'short', day: 'numeric' })} – {displayDate(days[6].date, { month: 'short', day: 'numeric' })}</span></div>
     <div className="week-chart" role="group" aria-label="Select a day to view and edit its tasks">
