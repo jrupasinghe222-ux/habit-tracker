@@ -25,3 +25,7 @@ Install its test browser once with `npx playwright install chromium` from the fr
 The browser checks use Chromium with synthetic data. They do not prove real Google account switching, provider outages, physical-device behavior, Safari/Firefox compatibility, screen-reader usability, production load capacity, or absence of security vulnerabilities. Existing signed-token API and PostgreSQL ownership checks complement these UI checks. A real two-account check on the deployed site remains useful after login changes.
 
 Screenshots and traces are generated under frontend/test-results and ignored by Git. Do not capture real login tokens or user data in test fixtures.
+
+## Save responsiveness
+
+Task changes and progress counts update optimistically before the save completes. Failed or unconfirmed saves restore the previous task list and show a retry message. Successful saves use the returned task instead of requesting the entire calendar again. Existing dated task edits skip template initialization; ownership validation and transaction-scoped locking remain enforced. Regression coverage now includes nine component tests and eight browser checks, including optimistic save/delete rollback.

@@ -14,7 +14,7 @@ function calendar(name = 'Read', date = '2026-09-10') {
   return { date, today: '2026-09-10', timezone: 'Asia/Colombo', tasks: [{ id: 'task-a', name, completed: false }],
     history: Array.from({ length: 7 }, (_, i) => ({ date: `2026-09-${String(i + 4).padStart(2, '0')}`, total: 1, completed_ids: [] })) }
 }
-const ok = (data = calendar()) => ({ ok: true, status: 200, json: async () => data }) as Response
+const ok = (data: unknown = calendar()) => ({ ok: true, status: 200, json: async () => data }) as Response
 const emit = (next: Session | null, event = 'SIGNED_IN') => act(() => auth.callback?.(event, next))
 async function open() { render(<App />); emit(session()); await screen.findByRole('heading', { name: 'Read' }) }
 
@@ -102,4 +102,41 @@ describe('request and account reliability', () => {
     expect(posts).toHaveLength(2)
     expect(posts[1][1]?.body).toBe(firstBody)
   })
+})
+
+
+it('updates completion immediately and does not reload the calendar after saving', async () => {
+  await open()
+  let finish!: (response: Response) => void
+  vi.mocked(fetch).mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  fireEvent.click(screen.getByRole('button', { name: 'Mark done: Read on 2026-09-10' }))
+  expect(screen.getByRole('button', { name: 'Undo completion for Read on 2026-09-10' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('progressbar').getAttribute('value')).toBe('1')
+  await act(async () => finish(ok({ id: 'task-a', name: 'Read', completed: true })))
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(2)
+  expect(screen.queryByText('Loading your day…')).toBeNull()
+})
+
+it('rolls back an optimistic check-in when the server rejects it', async () => {
+  await open()
+  let finish!: (response: Response) => void
+  vi.mocked(fetch).mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  fireEvent.click(screen.getByRole('button', { name: 'Mark done: Read on 2026-09-10' }))
+  expect(screen.getByRole('progressbar').getAttribute('value')).toBe('1')
+  await act(async () => finish({ ok: false, status: 503 } as Response))
+  expect(screen.getByRole('progressbar').getAttribute('value')).toBe('0')
+  expect(screen.getByRole('button', { name: 'Mark done: Read on 2026-09-10' }).getAttribute('aria-pressed')).toBe('false')
+  expect(screen.getByRole('alert')).toBeTruthy()
+})
+
+it('shows a new task before the save finishes and removes it if the save fails', async () => {
+  await open()
+  let fail!: (reason: Error) => void
+  vi.mocked(fetch).mockReturnValueOnce(new Promise((_, reject) => { fail = reject }))
+  fireEvent.change(screen.getByRole('textbox', { name: 'Add a task for this day' }), { target: { value: 'Walk' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Add task' }))
+  expect(screen.getByRole('heading', { name: 'Walk' })).toBeTruthy()
+  await act(async () => fail(new TypeError('offline')))
+  expect(screen.queryByRole('heading', { name: 'Walk' })).toBeNull()
+  expect((screen.getByRole('textbox', { name: 'Add a task for this day' }) as HTMLInputElement).value).toBe('Walk')
 })

@@ -269,10 +269,15 @@ def add_day_task(day: date, body: DayTaskInput, user_id: User, session: Database
 
 def find_day_task(day: date, task_id: UUID, user_id: UUID, session: Session, timezone: str):
     validate_day(day, timezone)
-    day_tasks(session, user_id, day, timezone)
-    task = session.scalar(select(DayTask).where(DayTask.id == task_id, DayTask.task_date == day,
-        DayTask.owner_id == user_id, DayTask.removed.is_(False)))
+    day_lock(session, user_id, day)
+    query = select(DayTask).where(DayTask.id == task_id, DayTask.task_date == day,
+        DayTask.owner_id == user_id)
+    task = session.scalar(query)
     if task is None:
+        # Only initialize legacy defaults when the dated task does not exist yet.
+        day_tasks(session, user_id, day, timezone)
+        task = session.scalar(query)
+    if task is None or task.removed:
         raise HTTPException(404, "Task not found on this day.")
     return task
 

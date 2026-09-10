@@ -75,3 +75,17 @@ test('slow reload announces loading and completes without clearing the current l
   await expect(page.getByRole('status')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Reload tasks' })).toBeEnabled()
 })
+
+
+test('deletion removes the row immediately and restores it if saving fails', async ({ page }) => {
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/api/days/**', async route => { await gate; await route.fulfill({ status: 503, json: { detail: 'Unavailable' } }) })
+  await page.getByRole('button', { name: `Delete ${longName}` }).click()
+  await page.getByRole('button', { name: 'Delete task', exact: true }).click()
+  await expect(page.getByRole('heading', { name: longName })).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  release()
+  await expect(page.getByRole('alert')).toContainText('Could not save')
+  await expect(page.getByRole('heading', { name: longName })).toBeVisible()
+})

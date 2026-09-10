@@ -122,6 +122,18 @@ export function App() {
     const version = generation.current
     reads.current++
     const day = calendar.date
+    const before = calendar
+    const change = body as Partial<Task> | undefined
+    function withTasks(current: Calendar, tasks: Task[]): Calendar {
+      return { ...current, tasks, history: current.history.map(entry => entry.date === day
+        ? { ...entry, total: tasks.length, completed_ids: tasks.filter(task => task.completed).map(task => task.id) }
+        : entry) }
+    }
+    const optimisticTasks = method === 'DELETE' ? before.tasks.filter(task => task.id !== taskId)
+      : method === 'POST' ? [...before.tasks, { id: change!.id!, name: change!.name!, completed: false }]
+      : before.tasks.map(task => task.id === taskId ? { ...task, ...change } : task)
+    setCalendar(withTasks(before, optimisticTasks))
+    if (method === 'DELETE') setDeleteTarget(null)
     mutation.current = true
     setBusy(taskId ?? 'new')
     setMessage('')
@@ -137,15 +149,22 @@ export function App() {
         if (response.status === 409) { const data = await response.json(); if (typeof data.detail === 'string') detail = data.detail }
         throw new Error(detail)
       }
+      let saved: Task | null = null
+      if (method !== 'DELETE') {
+        saved = await response.json()
+        if (!saved || typeof saved.id !== 'string' || typeof saved.name !== 'string' || typeof saved.completed !== 'boolean') {
+          throw new Error('Could not confirm the save. Reload this day before retrying.')
+        }
+      }
       if (version !== generation.current) return false
+      if (saved) setCalendar(current => current && withTasks(current, current.tasks.map(task => task.id === saved!.id ? saved! : task)))
       setDeleteTarget(null)
-      setRefresh(value => value + 1)
       return true
     } catch (error) {
       if (version === generation.current) {
+        setCalendar(before)
         const text = error instanceof TypeError ? 'Could not connect. Check your connection and retry.' : error instanceof Error && error.name !== 'TimeoutError' ? error.message : 'Could not confirm the save. Reload this day before retrying.'
-        if (method === 'DELETE') setDeleteError(text)
-        else setMessage(text)
+        setMessage(text)
       }
       return false
     } finally { if (version === generation.current) { mutation.current = false; setBusy(null) } }

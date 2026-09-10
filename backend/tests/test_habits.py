@@ -325,3 +325,19 @@ def test_calendar_week_stays_anchored_to_today(store, daily_seed, selected):
     assert [day["date"] for day in result["history"]] == [f"2026-09-{day:02}" for day in range(4, 11)]
     assert result["today"] == "2026-09-10"
     assert len(result["history"]) == 7
+
+
+def test_existing_day_task_edit_skips_template_initialization(store, daily_seed):
+    engine, _, _ = store
+    request("GET", "/api/calendar?selected=2026-09-09")
+    statements = []
+    def record(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        response = request("PATCH", f"/api/days/2026-09-09/tasks/{daily_seed}", {"completed": False})
+        assert response.status_code == 200
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    assert not any('INSERT' in statement.upper() for statement in statements)
+    assert not any('FROM main.habits' in statement or 'FROM main.completions' in statement for statement in statements)
