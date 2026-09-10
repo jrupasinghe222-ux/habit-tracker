@@ -49,7 +49,7 @@ The GitHub workflow runs tests and the frontend build after pushes and pull requ
 | File/folder | Purpose |
 | --- | --- |
 | frontend/src/main.tsx | Google login, habit form/list, logout |
-| frontend/src/supabase.ts | Browser auth client, PKCE, tab-scoped session persistence |
+| frontend/src/supabase.ts | Browser auth client, PKCE, persistent browser sessions |
 | backend/auth.py | Validates signed Supabase access tokens |
 | backend/database.py | Restricted PostgreSQL connection and transaction-scoped owner |
 | backend/models.py | SQLAlchemy habit model |

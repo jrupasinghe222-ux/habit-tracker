@@ -11,7 +11,7 @@ export const supabase = configured ? createClient(url, key, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    // Session storage limits persistence to this browser tab.
-    storage: window.sessionStorage,
+    // Use Supabase's default localStorage so sign-in survives closing the tab.
+    // The SDK manages persistence, token refresh, and cross-tab sign-out.
   },
 }) : null

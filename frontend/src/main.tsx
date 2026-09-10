@@ -26,6 +26,11 @@ function App() {
   useEffect(() => {
     if (!supabase) return
     const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+      // Auth events arrive after the SDK processes the OAuth return URL.
+      // Replace the entry so Back does not revisit a consumed login callback.
+      if (next && window.location.pathname === '/auth/callback') {
+        window.history.replaceState(window.history.state, '', '/')
+      }
       generation.current += 1
       setSession(next)
       setReady(true)

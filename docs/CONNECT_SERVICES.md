@@ -86,7 +86,7 @@ Terminal 2:
 
 Open http://127.0.0.1:5173. Sign in, create a habit, refresh, then delete it. Sign out and repeat with a second Google account. Each account must see only its own habits.
 
-Authentication uses Supabase-managed bearer tokens stored in browser sessionStorage (tab lifetime). FastAPI verifies signatures, expiry, issuer, audience, role and user ID. The browser attaches tokens in Authorization headers; the backend does not accept an identity cookie or client-supplied owner_id. Protecting the frontend from script injection remains essential. Local logout clears the local session; an already-issued token can remain valid until expiry. Immediate token revocation is not implemented in this milestone.
+Authentication uses Supabase-managed bearer tokens stored in browser localStorage (persists across browser restarts). FastAPI verifies signatures, expiry, issuer, audience, role and user ID. The browser attaches tokens in Authorization headers; the backend does not accept an identity cookie or client-supplied owner_id. Protecting the frontend from script injection remains essential. Local logout clears the local session; an already-issued token can remain valid until expiry. Immediate token revocation is not implemented in this milestone.
 
 The tests include real cryptographic verification using test-only signing keys and SQLite-backed API isolation tests. SQLite does NOT validate PostgreSQL policies. Real database/RLS checks are required before public release.
 
