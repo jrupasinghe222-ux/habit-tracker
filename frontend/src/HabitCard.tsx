@@ -74,7 +74,7 @@ export function HabitCard({ habit, completed, checkingIn, checkInDisabled, onChe
             <button type="button" className={`check-in${completed ? ' checked-in' : ''}`}
               aria-pressed={completed} aria-label={`${completed ? 'Undo today check-in for' : 'Mark done today:'} ${habit.name}`}
               disabled={checkInDisabled || deleting} onClick={onCheckIn}>
-              {checkingIn ? 'Saving…' : completed ? '✓ Done today' : 'Done today'}
+              {checkingIn ? 'Saving…' : completed ? '✓ Done' : 'Done'}
             </button>
             <button ref={editButton} type="button" className="secondary edit-habit"
               disabled={deleting} aria-label={`Edit ${habit.name}`}
