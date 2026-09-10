@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root { font-family: system-ui, sans-serif; color: #172343; background: #f3f6fc; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { width: min(100% - 3rem, 48rem); margin: 0 auto; padding: 1.5rem 0 3rem; }
+.eyebrow { color: #43577c; font-size: .875rem; font-weight: 700; letter-spacing: .04em; }
+h1 { font-size: clamp(2.5rem, 7vw, 4.5rem); line-height: 1.08; letter-spacing: -.045em; margin: 1.5rem 0; font-weight: 750; }
+.intro { max-width: 38rem; font-size: 1.125rem; line-height: 1.7; color: #465573; }
+section { margin-top: 2.5rem; border: 1px solid #ced8eb; border-radius: 1rem; background: #fff; padding: 1.75rem; }
+h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 .75rem; }
+section p { min-height: 3.25rem; line-height: 1.6; margin-bottom: 1.25rem; }
+button { background: #284fc7; color: white; border: 0; border-radius: .5rem; padding: .8rem 1.25rem; min-height: 44px; font: inherit; font-weight: 650; cursor: pointer; }
+button:enabled:hover { background: #1d3d9f; }
+button:disabled { opacity: .7; cursor: default; }
+button:focus-visible { outline: 3px solid #172343; outline-offset: 4px; }
+.note { font-size: .875rem; line-height: 1.6; color: #53627c; margin-top: 1.5rem; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.secondary { background: transparent; color: #284fc7; border: 1px solid #b7c7e5; }
+.secondary:enabled:hover { background: #edf2ff; }
+label { display: block; font-size: 1rem; margin: 1.5rem 0 .5rem; font-weight: 600; }
+.input-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+input { flex: 1; min-width: 0; width: 100%; border: 1px solid #879abb; border-radius: .5rem; padding: .75rem; font: inherit; }
+input:focus-visible { outline: 3px solid #284fc7; outline-offset: 2px; }
+.habits { display: grid; gap: 1rem; list-style: none; padding: 0; margin: 1.5rem 0; }
+
+.habits span { overflow-wrap: anywhere; min-width: 0; }
+.notice { margin-top: 1.5rem; padding: 1rem; border: 1px solid #b34736; border-radius: .5rem; color: #852519; background: #fff4f0; }
+@media (max-width: 480px) { .input-row { flex-direction: column; } section { padding: 1.25rem; } }
+.reload-habits { display: block; margin-top: 1.5rem; }
+
+.habit-card { position: relative; display: flex; align-items: center; gap: 1rem; padding: 1.25rem; border: 1px solid #c4d3f2; border-left: 4px solid #4267dc; border-radius: .85rem; background: linear-gradient(115deg, #eef3ff, #fff 75%); box-shadow: 0 4px 14px rgb(32 63 130 / 6%); }
+.habit-emblem { flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; display: grid; place-items: center; border-radius: .8rem; background: #284fc7; color: white; font-size: 1.25rem; font-weight: 750; }
+.habit-copy { min-width: 0; flex: 1; }
+.habit-copy h3 { margin: 0; font-size: 1.25rem; font-weight: 750; line-height: 1.4; overflow-wrap: anywhere; }
+.habit-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.habit-actions button { padding: .6rem .9rem; font-size: .875rem; }
+.edit-habit { background: white; }
+.delete-habit { color: #9e352a; border-color: #e2bdb7; background: white; }
+.delete-habit:enabled:hover { background: #fff0ed; }
+.habit-editor { flex: 1; min-width: 0; }
+.habit-editor label { margin: 0 0 .5rem; }
+.habit-editor .habit-actions { margin-top: 1rem; }
+.habit-card.is-editing { align-items: flex-start; border-color: #4267dc; }
+@media (max-width: 600px) { .habit-card { flex-wrap: wrap; padding: 1rem; } .habit-card > .habit-actions { width: 100%; justify-content: flex-end; } .habit-card.is-editing .habit-emblem { display: none; } }
+.delete-dialog { width: min(100% - 2rem, 25rem); max-height: calc(100dvh - 2rem); overflow-y: auto; margin: auto; padding: 1.25rem; color: #172343; background: #fff; border: 1px solid #d9e1ef; border-radius: .85rem; box-shadow: 0 24px 80px rgb(12 25 54 / 25%); }
+.delete-dialog::backdrop { background: rgb(15 26 50 / 48%); backdrop-filter: blur(3px); }
+.delete-dialog-heading { display: flex; align-items: center; gap: .75rem; }
+.delete-dialog-icon { flex-shrink: 0; width: 2.25rem; height: 2.25rem; display: grid; place-items: center; margin-bottom: 0; border-radius: .65rem; background: #fff0ed; color: #b13d30; }
+.delete-dialog h2 { margin: 0; font-size: 1.125rem; letter-spacing: -.02em; }
+.delete-dialog p { margin: .75rem 0 0; color: #52617c; line-height: 1.5; overflow-wrap: anywhere; }
+.delete-dialog strong { color: #172343; }
+.dialog-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1rem; }
+.danger-button { background: #b33428; }
+.danger-button:enabled:hover { background: #92291f; }
+.delete-dialog .dialog-error { padding: .75rem; background: #fff1ee; border-radius: .5rem; color: #92291f; }
+.dialog-actions button { padding: .6rem .9rem; font-size: .875rem; }
+@media (max-width: 340px) { .delete-dialog { padding: 1rem; } .dialog-actions { flex-wrap: wrap; } .dialog-actions button { flex: 1; } }
