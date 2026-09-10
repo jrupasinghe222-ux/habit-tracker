@@ -16,7 +16,6 @@ export function WeeklyProgress({ days, habits }: Props) {
   const total = counts.reduce((sum, count) => sum + count, 0)
   const activeDays = counts.filter(count => count > 0).length
   const selectedHabits = habits.filter(habit => selected.completed_ids.includes(habit.id))
-  const max = Math.max(...counts, 1)
 
   return <section className="weekly-progress" aria-labelledby="weekly-title">
     <div className="weekly-heading"><div><h2 id="weekly-title">Your last 7 days</h2>
@@ -25,10 +24,10 @@ export function WeeklyProgress({ days, habits }: Props) {
     <div className="week-chart" role="group" aria-label="Select a day to see completed habits">
       {days.map((day, index) => <button key={day.date} type="button" className={`week-day${selected.date === day.date ? ' selected' : ''}`}
         aria-pressed={selected.date === day.date}
-        aria-label={`${displayDate(day.date, { dateStyle: 'full' })}: ${counts[index]} check-ins`}
+        aria-label={`${displayDate(day.date, { dateStyle: 'full' })}: ${counts[index]} of ${day.total} tasks completed`}
         onClick={() => setSelectedDate(day.date)}>
-        <span className="day-count">{counts[index]}</span>
-        <span className="day-track" aria-hidden="true"><span style={{ height: `${counts[index] / max * 100}%` }} /></span>
+        <span className="day-count">{counts[index]}/{day.total}</span>
+        <span className="day-track" aria-hidden="true"><span style={{ height: `${day.total ? Math.min(counts[index] / day.total * 100, 100) : 0}%` }} /></span>
         <span className="day-label">{index === 6 ? 'Today' : displayDate(day.date, { weekday: 'short' })}</span>
       </button>)}
     </div>

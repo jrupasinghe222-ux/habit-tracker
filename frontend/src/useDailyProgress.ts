@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export type HistoryDay = { date: string; completed_ids: string[] }
+export type HistoryDay = { date: string; completed_ids: string[]; total: number }
 type Today = { date: string; timezone: string; completed_ids: string[]; history: HistoryDay[] }
 
 export function useDailyProgress(token: string | undefined, refresh: number) {
@@ -35,7 +35,7 @@ export function useDailyProgress(token: string | undefined, refresh: number) {
         if (typeof data.date !== 'string' || typeof data.timezone !== 'string'
           || !Array.isArray(data.completed_ids) || !data.completed_ids.every((id: unknown) => typeof id === 'string')) throw new Error()
         if (!Array.isArray(data.history) || data.history.length !== 7 || !data.history.every((day: HistoryDay) =>
-          typeof day.date === 'string' && Array.isArray(day.completed_ids) && day.completed_ids.every(id => typeof id === 'string'))) throw new Error()
+          typeof day.date === 'string' && Number.isInteger(day.total) && day.total >= 0 && Array.isArray(day.completed_ids) && day.completed_ids.every(id => typeof id === 'string'))) throw new Error()
         if (generation.current === version && latestRead.current === read) {
           setToday(data)
           setError('')

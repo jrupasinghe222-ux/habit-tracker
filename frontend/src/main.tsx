@@ -147,6 +147,7 @@ function App() {
       if (!response.ok && response.status !== 404) throw new Error()
       if (version === generation.current) {
         setHabits(rows => rows.filter(row => row.id !== habit.id))
+        daily.retry()
         setDeleteTarget(null)
       }
     } catch {

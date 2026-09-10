@@ -218,3 +218,21 @@ def test_week_history_crosses_year_and_includes_empty_days(store, monkeypatch):
     assert days[-1]["date"] == "2027-01-02"
     assert len(days) == 7
     assert all(day["completed_ids"] == [] for day in days)
+
+
+def test_daily_totals_use_creation_dates_not_busiest_day(store, frozen_today):
+    from datetime import date, datetime, timezone
+    from backend.models import Completion
+    engine, owner, other = store
+    with Session(engine) as session:
+        habits = [Habit(owner_id=owner, name=f"Habit {n}", created_at=datetime(2026, 9, 10, tzinfo=timezone.utc)) for n in range(5)]
+        session.add_all(habits)
+        session.add(Habit(owner_id=other, name="Private", created_at=datetime(2026, 9, 1, tzinfo=timezone.utc)))
+        session.flush()
+        for habit in habits[:4]:
+            session.add(Completion(owner_id=owner, habit_id=habit.id, completed_on=date(2026, 9, 10)))
+        session.commit()
+    history = request("GET", "/api/today?timezone=UTC").json()["history"]
+    assert all(day["total"] == 0 for day in history[:-1])
+    assert history[-1]["total"] == 5
+    assert len(history[-1]["completed_ids"]) == 4

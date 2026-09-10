@@ -120,6 +120,7 @@ def today(user_id: User, session: Database, timezone: str = "UTC"):
     start = day - timedelta(days=6)
     # Match the current habit list's bounded, deterministic selection.
     visible = select(Habit.id).where(Habit.owner_id == user_id).order_by(Habit.created_at, Habit.id).limit(100)
+    visible_habits = session.scalars(select(Habit).where(Habit.id.in_(visible))).all()
     rows = session.execute(select(Completion.completed_on, Completion.habit_id).where(
         Completion.owner_id == user_id, Completion.completed_on.between(start, day),
         Completion.habit_id.in_(visible),
@@ -127,6 +128,16 @@ def today(user_id: User, session: Database, timezone: str = "UTC"):
     history = [{"date": start + timedelta(days=offset), "completed_ids": []} for offset in range(7)]
     for completed_on, habit_id in rows:
         history[(completed_on - start).days]["completed_ids"].append(habit_id)
+    zone = ZoneInfo(timezone)
+    for entry in history:
+        available = set(entry["completed_ids"])
+        for habit in visible_habits:
+            created = habit.created_at
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=utc_timezone.utc)
+            if created.astimezone(zone).date() <= entry["date"]:
+                available.add(habit.id)
+        entry["total"] = len(available)
     return {"date": day, "timezone": timezone, "completed_ids": completed, "history": history}
 
 
