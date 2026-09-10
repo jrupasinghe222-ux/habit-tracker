@@ -69,3 +69,23 @@ input:focus-visible { outline: 3px solid #284fc7; outline-offset: 2px; }
 .habit-card.is-complete { border-left-color: #27805b; background: linear-gradient(115deg, #edf9f2, #fff 75%); }
 .check-in.checked-in { color: #185d40; background: #e1f3e8; border: 1px solid #94c9a8; }
 .check-in.checked-in:enabled:hover { background: #ccead8; }
+
+.weekly-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; flex-wrap: wrap; }
+.weekly-summary, .weekly-range { font-size: .875rem; color: #52617c; }
+.weekly-heading h2 { margin-bottom: .3rem; }
+.weekly-range { padding-top: .25rem; }
+.week-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .5rem; margin: 1.5rem 0; }
+.week-day { display: flex; flex-direction: column; align-items: center; gap: .5rem; min-width: 0; padding: .6rem .25rem; background: #f3f6fc; color: #43577c; border: 1px solid transparent; }
+.week-day:enabled:hover { background: #e8effc; }
+.week-day.selected { background: #edf3ff; border-color: #4267dc; color: #213f9b; }
+.day-count { font-size: .9rem; }
+.day-track { height: 5rem; width: min(1.75rem, 70%); display: flex; align-items: flex-end; background: #e0e8f6; border-radius: .3rem; overflow: hidden; }
+.day-track > span { width: 100%; background: #367956; border-radius: .3rem; }
+.day-label { font-size: .75rem; }
+.history-detail { border-top: 1px solid #e0e6f0; padding-top: 1rem; }
+.history-detail h3 { font-size: 1rem; font-weight: 650; margin: 0 0 .75rem; }
+.history-detail ul { display: flex; gap: .5rem; flex-wrap: wrap; padding: 0; margin: 0; list-style: none; }
+.history-detail li { padding: .4rem .7rem; background: #edf7f0; color: #24583b; border-radius: .5rem; overflow-wrap: anywhere; max-width: 100%; }
+.weekly-progress .history-detail p, .weekly-progress .history-note { min-height: 0; margin: 0; font-size: .875rem; color: #52617c; }
+.weekly-progress .history-note { margin-top: 1rem; font-size: .8rem; }
+@media (max-width: 400px) { .week-chart { gap: .2rem; } .day-label { font-size: .65rem; } }

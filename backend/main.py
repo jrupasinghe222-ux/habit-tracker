@@ -1,5 +1,5 @@
 """Habit Tracker API. Authentication and database are configured separately."""
-from datetime import date, datetime, timezone as utc_timezone
+from datetime import date, datetime, timedelta, timezone as utc_timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Annotated
 from uuid import UUID
@@ -117,7 +117,17 @@ def today(user_id: User, session: Database, timezone: str = "UTC"):
     completed = session.scalars(select(Completion.habit_id).where(
         Completion.owner_id == user_id, Completion.completed_on == day,
     )).all()
-    return {"date": day, "timezone": timezone, "completed_ids": completed}
+    start = day - timedelta(days=6)
+    # Match the current habit list's bounded, deterministic selection.
+    visible = select(Habit.id).where(Habit.owner_id == user_id).order_by(Habit.created_at, Habit.id).limit(100)
+    rows = session.execute(select(Completion.completed_on, Completion.habit_id).where(
+        Completion.owner_id == user_id, Completion.completed_on.between(start, day),
+        Completion.habit_id.in_(visible),
+    )).all()
+    history = [{"date": start + timedelta(days=offset), "completed_ids": []} for offset in range(7)]
+    for completed_on, habit_id in rows:
+        history[(completed_on - start).days]["completed_ids"].append(habit_id)
+    return {"date": day, "timezone": timezone, "completed_ids": completed, "history": history}
 
 
 class CheckInInput(BaseModel):

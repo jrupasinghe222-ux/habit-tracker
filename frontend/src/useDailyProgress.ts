@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-type Today = { date: string; timezone: string; completed_ids: string[] }
+export type HistoryDay = { date: string; completed_ids: string[] }
+type Today = { date: string; timezone: string; completed_ids: string[]; history: HistoryDay[] }
 
 export function useDailyProgress(token: string | undefined, refresh: number) {
   const [today, setToday] = useState<Today | null>(null)
@@ -33,6 +34,8 @@ export function useDailyProgress(token: string | undefined, refresh: number) {
         const data = await response.json()
         if (typeof data.date !== 'string' || typeof data.timezone !== 'string'
           || !Array.isArray(data.completed_ids) || !data.completed_ids.every((id: unknown) => typeof id === 'string')) throw new Error()
+        if (!Array.isArray(data.history) || data.history.length !== 7 || !data.history.every((day: HistoryDay) =>
+          typeof day.date === 'string' && Array.isArray(day.completed_ids) && day.completed_ids.every(id => typeof id === 'string'))) throw new Error()
         if (generation.current === version && latestRead.current === read) {
           setToday(data)
           setError('')
@@ -74,7 +77,10 @@ export function useDailyProgress(token: string | undefined, refresh: number) {
       })
       if (!response.ok) throw new Error(response.status === 409 ? 'day-changed' : 'save-failed')
       if (generation.current === version) {
-        setToday(current => current && ({ ...current, completed_ids: completed
+        setToday(current => current && ({ ...current,
+          history: current.history.map(day => day.date === today.date ? { ...day, completed_ids: completed
+            ? [...new Set([...day.completed_ids, id])] : day.completed_ids.filter(value => value !== id) } : day),
+          completed_ids: completed
           ? [...new Set([...current.completed_ids, id])]
           : current.completed_ids.filter(value => value !== id) }))
       }

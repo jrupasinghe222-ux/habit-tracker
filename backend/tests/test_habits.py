@@ -184,3 +184,37 @@ def test_timezone_dates_and_dst(monkeypatch):
     for hour in (6, 7):
         Clock.instant = datetime(2026, 3, 8, hour, 30, tzinfo=timezone.utc)
         assert current_date("America/New_York") == date(2026, 3, 8)
+
+
+def test_week_history_boundaries_empty_days_and_isolation(store, frozen_today):
+    from datetime import date
+    from backend.models import Completion
+    engine, owner, other = store
+    with Session(engine) as session:
+        own = Habit(owner_id=owner, name="Read")
+        private = Habit(owner_id=other, name="Private")
+        session.add_all([own, private])
+        session.flush()
+        own_id = own.id
+        for day in (3, 4, 7, 10, 11):
+            session.add(Completion(habit_id=own.id, owner_id=owner, completed_on=date(2026, 9, day)))
+        session.add(Completion(habit_id=private.id, owner_id=other, completed_on=date(2026, 9, 10)))
+        session.commit()
+    result = request("GET", "/api/today?timezone=Asia/Colombo").json()
+    assert result["timezone"] == "Asia/Colombo"
+    assert [day["date"] for day in result["history"]] == [f"2026-09-{day:02}" for day in range(4, 11)]
+    assert [len(day["completed_ids"]) for day in result["history"]] == [1, 0, 0, 1, 0, 0, 1]
+    assert all(day["completed_ids"] in ([], [str(own_id)]) for day in result["history"])
+    assert result["completed_ids"] == [str(own_id)]
+    request("PUT", f"/api/habits/{own_id}/check-in", {"date": "2026-09-10", "timezone": "UTC", "completed": False})
+    assert request("GET", "/api/today").json()["history"][-1]["completed_ids"] == []
+
+
+def test_week_history_crosses_year_and_includes_empty_days(store, monkeypatch):
+    from datetime import date
+    monkeypatch.setattr("backend.main.current_date", lambda zone: date(2027, 1, 2))
+    days = request("GET", "/api/today").json()["history"]
+    assert days[0]["date"] == "2026-12-27"
+    assert days[-1]["date"] == "2027-01-02"
+    assert len(days) == 7
+    assert all(day["completed_ids"] == [] for day in days)

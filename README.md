@@ -7,7 +7,7 @@ A guided React + FastAPI + Supabase project.
 Supabase Google sign-in is enabled. Migrations 0001 through 0003 are applied and the restricted runtime database connection is configured in the ignored root .env. Real PostgreSQL access-isolation checks pass. Vercel deployment and the full browser save/refresh workflow remain to be verified.
 
 Verified locally:
-- 42 tests pass: health, signed-token validation, input validation, and API user isolation.
+- 44 tests pass: health, signed-token validation, input validation, and API user isolation.
 - Frontend TypeScript check and production build pass.
 - Python dependency compatibility passes.
 - Alembic generates migration SQL successfully offline.
@@ -79,3 +79,7 @@ Different device timezones may show different current dates. There is no saved a
 A database primary key prevents duplicate completions, including concurrent/retried requests. A composite foreign key prevents attributing a completion to someone else's habit. Completion rows have forced row-level security and are deleted with their habit. The rollback-only PostgreSQL check covers these protections.
 
 Manual browser checks: mark done, refresh, reopen the site, undo, compare a second account, and verify the layout on mobile. Use a disposable habit when testing deletion. Streaks and history charts are not yet implemented.
+
+## Weekly history
+
+The last seven days include today in the displayed device timezone. Select a bar to see completed habits on that date. Totals count check-ins, not completion percentages or streaks. History follows the current list of at most 100 habits; renamed habits display their current name, and deleted habits and their history disappear. Empty days show zero check-ins. No new migration is required.

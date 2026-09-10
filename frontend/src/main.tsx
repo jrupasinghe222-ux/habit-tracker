@@ -6,6 +6,7 @@ import { supabase } from './supabase'
 import { HabitCard } from './HabitCard'
 import { DeleteHabitDialog } from './DeleteHabitDialog'
 import { useDailyProgress } from './useDailyProgress'
+import { WeeklyProgress } from './WeeklyProgress'
 import './styles.css'
 
 type Habit = { id: string; name: string }
@@ -206,6 +207,7 @@ function App() {
           <button className="secondary reload-habits" disabled={loading} onClick={() => setRefresh(value => value + 1)}>Reload habits</button>
         </section>
       )}
+      {session && daily.today && !loading && !message && <WeeklyProgress days={daily.today.history} habits={habits} />}
       {deleteTarget && <DeleteHabitDialog name={deleteTarget.name} busy={pendingDelete !== null}
         error={deleteError} onCancel={() => { if (!pendingDelete) setDeleteTarget(null) }}
         onConfirm={() => void deleteHabit(deleteTarget)} />}
